@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using System.Text;
 
-namespace Garage {
+namespace Garage.Vehicles {
     public abstract class Vehicle {
         public string Color { get; private set; }
         public int Wheels { get; private set; }

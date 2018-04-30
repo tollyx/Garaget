@@ -1,4 +1,4 @@
-﻿namespace Garage {
+﻿namespace Garage.Vehicles {
     internal class Car : Vehicle {
         public int Seats { get; private set; }
 
