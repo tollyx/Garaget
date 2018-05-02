@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Garage.Vehicles;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -53,23 +54,26 @@ namespace Garage {
                     // Do things to the selected garage
                     Console.WriteLine($"{garages.SelectedGarage}: {garages.SelectedCount}/{garages.SelectedCapacity}");
                     Console.WriteLine("What do you want to do?");
-                    switch (Menu(new string[] { "List vehicles", "Add a vehicle", "Remove a vehicle", "Find a vehicle", "Get a vehicle by license plate", "-Back-" })) {
+                    switch (Menu(new string[] { "Stats", "List vehicles", "Add a vehicle", "Remove a vehicle", "Find a vehicle", "Get a vehicle by license plate", "-Back-" })) {
                         case 0:
-                            ListVehicles(garages);
+                            Stats(garages);
                             break;
                         case 1:
-                            AddVehicle(garages);
+                            ListVehicles(garages.GetVehicles());
                             break;
                         case 2:
-                            RemoveVehicle(garages);
+                            AddVehicle(garages);
                             break;
                         case 3:
-                            FindVehicle(garages);
+                            RemoveVehicle(garages);
                             break;
                         case 4:
-                            GetVehicle(garages);
+                            FindVehicle(garages);
                             break;
                         case 5:
+                            GetVehicle(garages);
+                            break;
+                        case 6:
                             selecting = true;
                             break;
                         default:
@@ -77,6 +81,15 @@ namespace Garage {
                     }
                 }
                 Console.WriteLine();
+            }
+        }
+
+        private static void Stats(GarageHandler garages) {
+            Console.WriteLine($"{garages.SelectedGarage}'s stats:");
+            var vehicletypes = garages.GetAllVehicleTypes();
+            var vehicles = garages.GetVehicles();
+            foreach (var item in vehicletypes) {
+                Console.WriteLine($"{item}s: {vehicles.Where(x => x.ToString().StartsWith(item)).Count()}");
             }
         }
 
@@ -93,6 +106,27 @@ namespace Garage {
         }
 
         private static void FindVehicle(GarageHandler garage) {
+            Console.WriteLine("Please enter your search query: (enter nothing to cancel)");
+            string query = Prompt();
+            if (string.IsNullOrWhiteSpace(query)) return;
+
+            // This is so simple and works so well I love it
+            // We match whatever the user types in with the vehicle's tostring, 
+            // Which already lists all properties and values.
+            // This also makes it possible to specify specific values 
+            // for properties by simply inputting '<property>:<value>'.
+            // No need for any complex form-input view!
+            var terms = query.Split().Select(x => x.ToLower()).ToList();
+            var matches = garage.GetVehicles()
+                .Where(
+                    x => terms.All(q => x.ToString().ToLower().Contains(q))
+                    );
+            if (!matches.Any()) {
+                Console.WriteLine("No matches.");
+                return;
+            }
+            Console.WriteLine("Found vehicles:");
+            ListVehicles(matches);
         }
 
         private static void RemoveVehicle(GarageHandler garage) {
@@ -113,14 +147,12 @@ namespace Garage {
             var types = garage.GetAllVehicleTypes().ToList();
             types.Add("-Cancel-");
             var sel = Menu(types.ToArray());
-            if (sel >= types.Count-1) {
-                return;
-            }
+            if (sel >= types.Count - 1) return;
 
             var selected = types[sel];
             var form = garage.GetVehicleForm(selected);
             
-            // TODO: FormEntry class that allows you to see all fields and switch between them as you please?
+            // TODO: FormEntry edit view that allows you to see all fields and switch between them as you please?
 
             int i = 0;
             Console.WriteLine("Please enter the following values:");
@@ -136,18 +168,20 @@ namespace Garage {
             garage.CreateVehicle(form);
         }
 
-        private static void ListVehicles(GarageHandler garage) {
-            if (garage.SelectedCount == 0) {
-                Console.WriteLine("There are no vehicles in this garage.");
+        private static void ListVehicles(IEnumerable<Vehicle> vehicles) {
+            var list = vehicles.Select(x => x.ToString()).ToList();
+            if (list.Count == 0) {
+                Console.WriteLine("There are no vehicles to list.");
+                return;
+            }
+            list.Add("-Back-");
+            var arr = list.ToArray();
+            int sel = Menu(arr);
+            if (sel >= arr.Length - 1) {
                 return;
             }
 
-            // TODO: Navigatable list with filtering?
-
-            // All the work is done in Vehicle.ToString()
-            foreach (var item in garage.GetVehicles()) {
-                Console.WriteLine(item);
-            }
+            // TODO: Do something with the selected vehicle
         }
 
         private static void SelectGarage(GarageHandler garages) {
@@ -211,26 +245,28 @@ namespace Garage {
                     case ConsoleKey.UpArrow:
                     case ConsoleKey.W:
                     case ConsoleKey.K:
-                        if (selection > 0) {
-                            Console.SetCursorPosition(0, startpos + selection);
-                            Console.Write(' ');
-                            selection--;
-                        }
+                        Console.SetCursorPosition(0, startpos + selection);
+                        Console.Write(' ');
+                        selection--;
                         break;
                     case ConsoleKey.DownArrow:
                     case ConsoleKey.S:
                     case ConsoleKey.J:
-                        if (selection < options.Length-1) {
-                            Console.SetCursorPosition(0, startpos + selection);
-                            Console.Write(' ');
-                            selection++;
-                        }
+                        Console.SetCursorPosition(0, startpos + selection);
+                        Console.Write(' ');
+                        selection++;
                         break;
                     case ConsoleKey.Enter:
                         finished = true;
                         break;
                     default:
                         break;
+                }
+                if (selection < 0) {
+                    selection += options.Length;
+                }
+                else if(selection >= options.Length) {
+                    selection -= options.Length;
                 }
             }
             Console.SetCursorPosition(0, startpos + options.Length);
@@ -271,7 +307,9 @@ namespace Garage {
                         typing = false;
                         break;
                     default:
-                        entry += input.KeyChar;
+                        if (char.IsLetterOrDigit(input.KeyChar)) {
+                            entry += input.KeyChar;
+                        }
                         break;
                 }
             }

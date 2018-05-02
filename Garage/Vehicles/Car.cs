@@ -1,9 +1,9 @@
 ﻿namespace Garage.Vehicles {
     internal class Car : Vehicle {
-        public int Seats { get; private set; }
+        public int TankVolume { get; }
 
-        public Car(string plate, string color="Yellow", int seats=5) : base(4, color, plate) {
-            Seats = 5;
+        public Car(string plate, string color="Yellow", int tankvolume=20) : base(4, color, plate) {
+            TankVolume = tankvolume;
         }
     }
 }

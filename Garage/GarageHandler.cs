@@ -11,7 +11,10 @@ namespace Garage {
         // TODO: clean this class up
 
         static readonly Type[] vehicleTypes = new Type[] {
+                typeof(Airplane),
+                typeof(Boat),
                 typeof(Car),
+                typeof(Motorcycle),
             };
 
         Dictionary<string, Garage<Vehicle>> garages;

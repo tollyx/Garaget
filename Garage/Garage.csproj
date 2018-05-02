@@ -42,6 +42,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Vehicles\Airplane.cs" />
+    <Compile Include="Vehicles\Boat.cs" />
+    <Compile Include="Vehicles\Bus.cs" />
     <Compile Include="Vehicles\Car.cs" />
     <Compile Include="Field.cs" />
     <Compile Include="Form.cs" />
@@ -49,6 +52,7 @@
     <Compile Include="GarageHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Vehicles\Motorcycle.cs" />
     <Compile Include="Vehicles\Vehicle.cs" />
   </ItemGroup>
   <ItemGroup>
