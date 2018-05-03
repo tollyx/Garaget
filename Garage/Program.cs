@@ -9,94 +9,61 @@ namespace Garage {
     class Program {
         static void Main(string[] args) {
             Console.CursorVisible = false;
-            GarageHandler garages = new GarageHandler();
+            GarageHandler handler = new GarageHandler();
 
             bool running = true;
-            bool selecting = true;
+
             while (running) {
-                if (garages.GarageCount == 0) {
-                    // No garage menu
-                    Console.WriteLine("You have no garages.");
-                    switch (Menu(new string[] { "Create a new garage", "-Quit-", })) {
-                        case 0:
-                            CreateGarage(garages);
-                            selecting = false;
-                            break;
-                        case 1:
-                            running = false;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                else if (garages.SelectedGarage == null || selecting) {
+                if (handler.SelectedGarage == null) {
                     // Create/Delete/Select a garage
-                    Console.WriteLine("What do you want to do?");
-                    switch (Menu(new string[] { "Create a new garage", "Delete a garage", "Select a Garage", "-Quit-" })) {
-                        case 0:
-                            CreateGarage(garages);
-                            break;
-                        case 1:
-                            DeleteGarage(garages);
-                            break;
-                        case 2:
-                            SelectGarage(garages);
-                            selecting = false;
-                            break;
-                        case 3:
-                            running = false;
-                            break;
-                        default:
-                            break;
+                    var menu = new List<(string, Action)>() {
+                        ("Create a new garage", () => CreateGarage(handler))
+                    };
+                    if (handler.AmountOfGarages > 0) {
+                        menu.Add(("Delete a garage", () => DeleteGarage(handler)));
+                        menu.Add(("Select a Garage", () => SelectGarage(handler)));
                     }
+                    menu.Add(("-Quit-", () => running = false));
+
+                    Console.WriteLine("What do you want to do?");
+                    MenuActions(menu);
                 }
                 else {
                     // Do things to the selected garage
-                    Console.WriteLine($"{garages.SelectedGarage}: {garages.SelectedCount}/{garages.SelectedCapacity}");
-                    Console.WriteLine("What do you want to do?");
-                    switch (Menu(new string[] { "Stats", "List vehicles", "Add a vehicle", "Remove a vehicle", "Find a vehicle", "Get a vehicle by license plate", "-Back-" })) {
-                        case 0:
-                            Stats(garages);
-                            break;
-                        case 1:
-                            ListVehicles(garages.GetVehicles());
-                            break;
-                        case 2:
-                            AddVehicle(garages);
-                            break;
-                        case 3:
-                            RemoveVehicle(garages);
-                            break;
-                        case 4:
-                            FindVehicle(garages);
-                            break;
-                        case 5:
-                            GetVehicle(garages);
-                            break;
-                        case 6:
-                            selecting = true;
-                            break;
-                        default:
-                            break;
+                    var menu = new List<(string, Action)>();
+                    if (handler.SelectedGarageVehicleCount < handler.SelectedGarageCapacity) {
+                        menu.Add(("Add a vehicle", () => AddVehicle(handler)));
                     }
+                    if (handler.SelectedGarageVehicleCount > 0) {
+                        menu.Add(("Stats", () => Stats(handler)));
+                        menu.Add(("List vehicles", () => ListVehicles(handler, handler.GetSelectedVehicles())));
+                        menu.Add(("Remove a vehicle", () => RemoveVehicle(handler)));
+                        menu.Add(("Find a vehicle", () => FindVehicle(handler)));
+                        menu.Add(("Get by License plate", () => GetVehicle(handler)));
+                    }
+                    menu.Add(("-Back-", () => handler.SelectGarage(null)));
+
+
+                    Console.WriteLine($"{handler.SelectedGarage}: {handler.SelectedGarageVehicleCount}/{handler.SelectedGarageCapacity}");
+                    Console.WriteLine("What do you want to do?");
+                    MenuActions(menu);
                 }
-                Console.WriteLine();
             }
         }
 
-        private static void Stats(GarageHandler garages) {
-            Console.WriteLine($"{garages.SelectedGarage}'s stats:");
-            var vehicletypes = garages.GetAllVehicleTypes();
-            var vehicles = garages.GetVehicles();
+        private static void Stats(GarageHandler handler) {
+            Console.WriteLine($"{handler.SelectedGarage}'s stats:");
+            var vehicletypes = handler.GetAllVehicleTypes();
+            var vehicles = handler.GetSelectedVehicles();
             foreach (var item in vehicletypes) {
                 Console.WriteLine($"{item}s: {vehicles.Where(x => x.ToString().StartsWith(item)).Count()}");
             }
         }
 
-        private static void GetVehicle(GarageHandler garage) {
+        private static void GetVehicle(GarageHandler handler) {
             Console.WriteLine("Please enter the vehicle's license plate: ");
             string input = Prompt();
-            var match = garage.GetVehicles().FirstOrDefault(x => x.Plate == input);
+            var match = handler.GetSelectedVehicles().FirstOrDefault(x => x.Plate == input);
             if (match != null) {
                 Console.WriteLine(match);
             }
@@ -105,52 +72,42 @@ namespace Garage {
             }
         }
 
-        private static void FindVehicle(GarageHandler garage) {
+        private static void FindVehicle(GarageHandler handler) {
             Console.WriteLine("Please enter your search query: (enter nothing to cancel)");
             string query = Prompt();
             if (string.IsNullOrWhiteSpace(query)) return;
 
-            // This is so simple and works so well I love it
-            // We match whatever the user types in with the vehicle's tostring, 
-            // Which already lists all properties and values.
-            // This also makes it possible to specify specific values 
-            // for properties by simply inputting '<property>:<value>'.
-            // No need for any complex form-input view!
-            var terms = query.Split().Select(x => x.ToLower()).ToList();
-            var matches = garage.GetVehicles()
-                .Where(
-                    x => terms.All(q => x.ToString().ToLower().Contains(q))
-                    );
+            IEnumerable<Vehicle> matches = handler.SearchVehicles(query);
             if (!matches.Any()) {
                 Console.WriteLine("No matches.");
                 return;
             }
             Console.WriteLine("Found vehicles:");
-            ListVehicles(matches);
+            ListVehicles(handler, matches);
         }
 
-        private static void RemoveVehicle(GarageHandler garage) {
-            var options = garage.GetVehicles().Select(x => " " + x.ToString()).ToList();
+        private static void RemoveVehicle(GarageHandler handler) {
+            var options = handler.GetSelectedVehicles().Select(x => x.ToString()).ToList();
             options.Add("-Cancel-");
             Console.WriteLine("Select the vehicle to remove:");
             var sel = Menu(options.ToArray());
             if (sel >= options.Count) return;
-
-            // TODO: remove this and add it as a feature in the list view
-
-            var v = garage.GetVehicles().Skip(sel).First();
-            garage.RemoveVehicle(v);
+            handler.DeleteVehicle(sel);
         }
 
-        private static void AddVehicle(GarageHandler garage) {
+        private static void AddVehicle(GarageHandler handler) {
+            if (handler.SelectedGarageVehicleCount >= handler.SelectedGarageCapacity) {
+                Console.WriteLine("The garage is full.");
+                return;
+            }
             Console.WriteLine("Please select a vehicle type:");
-            var types = garage.GetAllVehicleTypes().ToList();
+            var types = handler.GetAllVehicleTypes().ToList();
             types.Add("-Cancel-");
             var sel = Menu(types.ToArray());
             if (sel >= types.Count - 1) return;
 
             var selected = types[sel];
-            var form = garage.GetVehicleForm(selected);
+            var form = handler.GetVehicleForm(selected);
             
             // TODO: FormEntry edit view that allows you to see all fields and switch between them as you please?
 
@@ -165,10 +122,10 @@ namespace Garage {
                 }
                 i++;
             }
-            garage.CreateVehicle(form);
+            handler.CreateVehicle(form);
         }
 
-        private static void ListVehicles(IEnumerable<Vehicle> vehicles) {
+        private static void ListVehicles(GarageHandler handler, IEnumerable<Vehicle> vehicles) {
             var list = vehicles.Select(x => x.ToString()).ToList();
             if (list.Count == 0) {
                 Console.WriteLine("There are no vehicles to list.");
@@ -181,38 +138,38 @@ namespace Garage {
                 return;
             }
 
-            // TODO: Do something with the selected vehicle
+            VehicleMenu(handler, vehicles.Skip(sel).First());
         }
 
-        private static void SelectGarage(GarageHandler garages) {
-            var entries = garages.FormattedGaragesList.ToList();
+        private static void SelectGarage(GarageHandler handler) {
+            var entries = handler.FormattedGarageList.ToList();
             entries.Add("-Cancel-");
 
             Console.WriteLine("Select a garage:");
             int sel = Menu(entries.ToArray());
 
             if (sel < entries.Count-1) {
-                garages.SelectGarage(garages.Garages.Skip(sel).First());
+                handler.SelectGarage(handler.Garages.Skip(sel).First());
             }
         }
 
-        private static void DeleteGarage(GarageHandler garages) {
-            var list = garages.FormattedGaragesList.ToList();
-            Console.WriteLine("Pick a garage to delete:");
+        private static void DeleteGarage(GarageHandler handler) {
+            var list = handler.FormattedGarageList.ToList();
             list.Add("-Cancel-");
+            Console.WriteLine("Pick a garage to delete:");
             var sel = Menu(list.ToArray());
-            if (sel >= 0 && sel < garages.GarageCount) {
-                var entry = garages.Garages.Skip(sel).First();
-                garages.DeleteGarage(entry);
+            if (sel >= 0 && sel < handler.AmountOfGarages) {
+                var entry = handler.Garages.Skip(sel).First();
+                handler.DeleteGarage(entry);
                 Console.WriteLine($"Deleted Garage {entry}");
             }
         }
 
-        private static void CreateGarage(GarageHandler garages) {
+        private static void CreateGarage(GarageHandler handler) {
             Console.WriteLine("Please enter a name for the garage: (enter nothing to cancel)");
             string name = Prompt();
             if (string.IsNullOrWhiteSpace(name)) return;
-            if (garages.Garages.Any(x => x == name)) {
+            if (handler.Garages.Any(x => x == name)) {
                 Console.WriteLine($"A Garage with the name '{name}' already exists");
                 return;
             }
@@ -223,11 +180,28 @@ namespace Garage {
                 Console.WriteLine("Please enter the capacity of the garage: (enter '-1' to cancel)");
                 capacityInput = Prompt();
             } while (!Int32.TryParse(capacityInput, out capacity));
-            if (capacity > 0) {
-                garages.CreateGarage(name, capacity);
-                garages.SelectGarage(name);
+            if (capacity >= 0) {
+                handler.CreateGarage(name, capacity);
+                handler.SelectGarage(name);
             }
             return;
+        }
+
+        static void VehicleMenu(GarageHandler handler, Vehicle vehicle) {
+            List<(string, Action)> menu = new List<(string, Action)>() {
+                ("Delete", () => handler.DeleteVehicle(vehicle)),
+                ("-Back-", () => {}),
+            };
+            Console.WriteLine();
+            Console.WriteLine("What do you want to do with this vehicle?");
+            Console.WriteLine(vehicle);
+            MenuActions(menu);
+        }
+
+        static void MenuActions(IList<(string name, Action action)> menu) {
+            int sel = Menu(menu.Select(x => x.name).ToArray());
+            Console.WriteLine();
+            menu[sel].action();
         }
 
         static int Menu(string[] options) {
@@ -245,6 +219,7 @@ namespace Garage {
                     case ConsoleKey.UpArrow:
                     case ConsoleKey.W:
                     case ConsoleKey.K:
+                    case ConsoleKey.NumPad8:
                         Console.SetCursorPosition(0, startpos + selection);
                         Console.Write(' ');
                         selection--;
@@ -252,6 +227,7 @@ namespace Garage {
                     case ConsoleKey.DownArrow:
                     case ConsoleKey.S:
                     case ConsoleKey.J:
+                    case ConsoleKey.NumPad2:
                         Console.SetCursorPosition(0, startpos + selection);
                         Console.Write(' ');
                         selection++;

@@ -69,13 +69,13 @@ namespace Garage.Tests {
         public void Enumerator() {
             // Arrange
             int capacity = 10;
-            var garage = new Garage<TestVehicle>(capacity);
             var vehicles = new TestVehicle[] {
                 new TestVehicle(),
                 new TestVehicle(),
                 new TestVehicle(),
                 new TestVehicle(),
             };
+            var garage = new Garage<TestVehicle>(capacity);
             foreach (var item in vehicles) {
                 garage.Add(item);
             }
@@ -110,8 +110,7 @@ namespace Garage.Tests {
                 Assert.AreNotSame(car, item);
             }
             Assert.AreEqual(2, garage.Count);
-            // Just to make sure the iterator agrees 
-            Assert.AreEqual(2, garage.Count());
+            Assert.AreEqual(2, garage.Count()); // Just to make sure the iterator agrees 
         }
 
         [TestMethod()]
@@ -132,9 +131,8 @@ namespace Garage.Tests {
                 Assert.AreNotSame(car, item);
             }
             Assert.AreEqual(2, garage.Count);
-            // Just to make sure the iterator agrees 
-            // (this actually caught a bug, see Garage.Remove())
-            Assert.AreEqual(2, garage.Count());
+            Assert.AreEqual(2, garage.Count()); // Just to make sure the iterator agrees 
+                                                // (this actually caught a bug, see Garage.Remove(T vehicle))
         }
 
         [TestMethod()]
@@ -151,8 +149,7 @@ namespace Garage.Tests {
             // Assert
             Assert.IsFalse(success);
             Assert.AreEqual(2, garage.Count);
-            // Just to make sure the iterator agrees 
-            Assert.AreEqual(2, garage.Count());
+            Assert.AreEqual(2, garage.Count()); // Just to make sure the iterator agrees 
         }
 
         [TestMethod()]
@@ -167,39 +164,7 @@ namespace Garage.Tests {
             // Assert
             Assert.IsFalse(success);
             Assert.AreEqual(0, garage.Count);
-            // Just to make sure the iterator agrees 
-            Assert.AreEqual(0, garage.Count());
-        }
-
-        [TestMethod()]
-        public void Get_By_Plate_Success() {
-            // Arrange
-            var garage = new Garage<TestVehicle>(4);
-            var car = new TestVehicle(plate: "CARWASH");
-            garage.Add(new TestVehicle());
-            garage.Add(car);
-            garage.Add(new TestVehicle());
-
-            // Act
-            var found = garage.GetByPlate("CARWASH");
-
-            // Assert
-            Assert.AreSame(car, found);
-        }
-
-        [TestMethod()]
-        public void Get_By_Plate_Fail() {
-            // Arrange
-            var garage = new Garage<TestVehicle>(4);
-            garage.Add(new TestVehicle());
-            garage.Add(new TestVehicle(plate: "CARWASH"));
-            garage.Add(new TestVehicle());
-
-            // Act
-            var found = garage.GetByPlate("CARWUSH");
-
-            // Assert
-            Assert.AreEqual(null, found);
+            Assert.AreEqual(0, garage.Count()); // Just to make sure the iterator agrees 
         }
     }
 }

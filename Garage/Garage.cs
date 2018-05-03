@@ -13,8 +13,26 @@ namespace Garage {
         public int Capacity => vehicles.Length;
         public int Count { get; private set; }
 
-        public Garage(int capacity) {
+        public Garage(T[] vehicles) {
+            this.vehicles = vehicles;
+        }
+
+        public Garage(IList<T> vehicles) {
+            this.vehicles = vehicles.ToArray();
+        }
+
+        public Garage(T[] vehicles, int capacity) {
             this.vehicles = new T[capacity];
+            vehicles.CopyTo(vehicles, 0);
+        }
+
+        public Garage(IList<T> vehicles, int capacity) {
+            this.vehicles = new T[capacity];
+            vehicles.CopyTo(this.vehicles, 0);
+        }
+
+        public Garage(int capacity) {
+            vehicles = new T[capacity];
             Count = 0;
         }
 
@@ -32,24 +50,24 @@ namespace Garage {
                 if (vehicles[i] == vehicle) {
                     vehicles[i] = null;
                     removedAt = i;
+                    break;
                 }
             }
             if (removedAt < 0) return false;
 
             Count--;
 
+            // Pack the vehicles to remove any null-gaps in the array
             // Changes the order of the vehicles but it's O(1)
             // TODO: Maybe switch to a proper order-preserving move?
             if (removedAt < Count) {
                 vehicles[removedAt] = vehicles[Count];
-                vehicles[Count] = null; // I Forgot this line, last assert in the 'Remove_At_Front_Success' test caught it. Unit testing is nice. :)
+                vehicles[Count] = null; // I Forgot this line, causing the enumerator iterate over duplicated elements. 
+                                        // Last assert in the 'Remove_At_Front_Success' test caught it. 
+                                        // Unit testing is nice. :)
             }
 
             return true;
-        }
-
-        public T GetByPlate(string plate) {
-            return this.FirstOrDefault(v => v.Plate == plate);
         }
 
         public IEnumerator<T> GetEnumerator() {
@@ -61,6 +79,7 @@ namespace Garage {
                     // We could just skip the item instead of breaking, 
                     // but we shouldn't have any null-gaps in the array anyway
                     // and those should be considered a bug.
+                    // And if that would ever to occur, the unit tests would catch it (i hope)
                     yield break;
                 }
             }
